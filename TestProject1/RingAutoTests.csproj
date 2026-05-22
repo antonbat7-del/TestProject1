@@ -21,4 +21,12 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include=".vscode\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include=".vscode\settings.json" />
+  </ItemGroup>
+
 </Project>

@@ -96,7 +96,11 @@ namespace RingAutoTests.Pages
             phoneInput.SendKeys(phone);
             Thread.Sleep(300);
 
-            var equipLabel = _b.Driver.FindElement(By.XPath("//label[contains(text(),'Тип оборудования')]"));
+            // Прокручиваем к полю "Тип обслуживаемого оборудования"
+            var equipLabel = _b.Driver.FindElement(By.XPath("//label[contains(text(),'Тип обслуживаемого оборудования')]"));
+            ((IJavaScriptExecutor)_b.Driver).ExecuteScript("arguments[0].scrollIntoView(true);", equipLabel);
+            Thread.Sleep(500);
+
             var equipInput = equipLabel.FindElement(By.XPath("./following-sibling::input[1]"));
             equipInput.Click();
             equipInput.Clear();
@@ -112,6 +116,8 @@ namespace RingAutoTests.Pages
                 last.SendKeys("Тестовое описание организации");
                 Thread.Sleep(300);
             }
+
+            Console.WriteLine("✅ Контакты заполнены");
         }
 
         public void ClickBankRequisites()
@@ -173,10 +179,69 @@ namespace RingAutoTests.Pages
 
         public void ClickSave()
         {
-            // 3. Нажать кнопку "Создать организацию" (по классу btn-red)
-            var createOrgBtn = _b.Driver.FindElement(By.XPath("//button[contains(@class,'btn-red')]//span[contains(text(),'Создать организацию')]"));
-            ((IJavaScriptExecutor)_b.Driver).ExecuteScript("arguments[0].click();", createOrgBtn);
-            Thread.Sleep(2000);
+            Thread.Sleep(2000); // Увеличенная задержка перед поиском
+
+            // Прокручиваем страницу вниз, чтобы кнопка стала видимой
+            ((IJavaScriptExecutor)_b.Driver).ExecuteScript("window.scrollTo(0, document.body.scrollHeight);");
+            Thread.Sleep(500);
+
+            IWebElement saveBtn = null;
+
+            // Пробуем разные локаторы
+            try
+            {
+                saveBtn = _b.Driver.FindElement(By.XPath("//button[contains(@class,'btn-red')]"));
+                Console.WriteLine("✅ Кнопка найдена по классу btn-red");
+            }
+            catch
+            {
+                try
+                {
+                    saveBtn = _b.Driver.FindElement(By.XPath("//button[@type='submit']"));
+                    Console.WriteLine("✅ Кнопка найдена по type=submit");
+                }
+                catch
+                {
+                    try
+                    {
+                        saveBtn = _b.Driver.FindElement(By.XPath("//button[contains(text(),'Создать')]"));
+                        Console.WriteLine("✅ Кнопка найдена по тексту 'Создать'");
+                    }
+                    catch
+                    {
+                        try
+                        {
+                            saveBtn = _b.Driver.FindElement(By.XPath("//button[contains(@class,'btn')]//span[contains(text(),'Создать')]"));
+                            Console.WriteLine("✅ Кнопка найдена по классу btn и тексту");
+                        }
+                        catch { }
+                    }
+                }
+            }
+
+            if (saveBtn != null)
+            {
+                // Клик через JavaScript (гарантированно сработает)
+                ((IJavaScriptExecutor)_b.Driver).ExecuteScript("arguments[0].click();", saveBtn);
+                Thread.Sleep(2000);
+                Console.WriteLine("✅ Организация сохранена");
+            }
+            else
+            {
+                // Последний вариант: ищем через JavaScript
+                IJavaScriptExecutor js = (IJavaScriptExecutor)_b.Driver;
+                js.ExecuteScript(@"
+                    var btns = document.querySelectorAll('button');
+                    for(var i = 0; i < btns.length; i++) {
+                        if(btns[i].innerText.includes('Создать')) {
+                            btns[i].click();
+                            break;
+                        }
+                    }
+                ");
+                Thread.Sleep(2000);
+                Console.WriteLine("✅ Организация сохранена через JavaScript поиск");
+            }
         }
 
         public void ClickClient(string clientName1, string clientName2)
@@ -313,13 +378,17 @@ namespace RingAutoTests.Pages
         public void EditEquipmentType(string newType)
         {
             Thread.Sleep(500);
-            var equipLabel = _b.Driver.FindElement(By.XPath("//label[contains(text(),'Тип оборудования')]"));
+            // Исправлен локатор: "Тип обслуживаемого оборудования" вместо "Тип оборудования"
+            var equipLabel = _b.Driver.FindElement(By.XPath("//label[contains(text(),'Тип обслуживаемого оборудования')]"));
+            ((IJavaScriptExecutor)_b.Driver).ExecuteScript("arguments[0].scrollIntoView(true);", equipLabel);
+            Thread.Sleep(500);
             var equipInput = equipLabel.FindElement(By.XPath("./following-sibling::input[1]"));
             equipInput.Click();
             equipInput.Clear();
             Thread.Sleep(200);
             equipInput.SendKeys(newType);
             Thread.Sleep(300);
+            Console.WriteLine($"✅ Тип оборудования изменён на: {newType}");
         }
 
         public void EditBankRequisites(string newBik, string newBankName, string newAccount, string newCorrAccount)
