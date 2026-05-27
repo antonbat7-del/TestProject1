@@ -320,184 +320,134 @@ namespace RingAutoTests.Tests.Партнеры
                 Assert.True(partnerRows.Count > 0, "❌ Список партнёров пуст");
                 Console.WriteLine($"\n✅ Найдено партнёров: {partnerRows.Count}");
 
-                // ========== ПРОВЕРКА РОЛИ ==========
-                int wrongTypeCount = 0;
+                // ========== ПОСТРОЧНАЯ ПРОВЕРКА КАЖДОЙ КОМПАНИИ ==========
+                int companyIndex = 0;
+                int totalErrors = 0;
+                List<string> errorMessages = new List<string>();
+
+                Console.WriteLine("\n=== ПОСТРОЧНАЯ ПРОВЕРКА КОМПАНИЙ ===\n");
+
                 foreach (var row in partnerRows)
                 {
+                    companyIndex++;
+                    List<string> companyErrors = new List<string>();
+
+                    Console.WriteLine($"--- Компания {companyIndex} ---");
+
+                    // 1. ПРОВЕРКА РОЛИ
                     try
                     {
                         var roleElement = row.FindElement(By.XPath(".//td[3]//div[contains(@class,'partners__info')]"));
-                        string role = roleElement.Text.Trim();
-                        if (!role.Contains("Сервисная компания"))
+                        string roleText = roleElement.Text.Trim();
+
+                        if (!roleText.Contains("Сервисная компания"))
                         {
-                            wrongTypeCount++;
+                            companyErrors.Add($"Роль: ожидается 'Сервисная компания', фактически '{roleText}'");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"   ✅ Роль: '{roleText}'");
                         }
                     }
-                    catch { }
-                }
-                Assert.True(wrongTypeCount == 0, $"❌ Найдено {wrongTypeCount} партнёров с неправильной ролью");
-                Console.WriteLine("✅ 1. Все партнёры имеют тип 'Сервисная компания'");
+                    catch (Exception ex)
+                    {
+                        companyErrors.Add($"Роль: не удалось получить текст - {ex.Message}");
+                    }
 
-                // ========== ПРОВЕРКА СТАТУСА НДС ==========
-                int companiesWithNds = 0, companiesWithoutNds = 0, companiesWithoutNdsStatus = 0;
-
-                foreach (var row in partnerRows)
-                {
+                    // 2. ПРОВЕРКА НДС
                     try
                     {
                         var infoDiv = row.FindElement(By.XPath(".//td[3]//div[contains(@class,'partners__info')]"));
                         string infoText = infoDiv.Text.Trim();
 
-                        bool hasNds = infoText.Contains("С НДС") ||
-                                      infoText.Contains("C НДС") ||
-                                      (infoText.Contains("НДС") && !infoText.Contains("Без"));
+                        bool hasNds = infoText.Contains("С НДС") || infoText.Contains("C НДС");
+                        bool hasWithoutNds = infoText.Contains("Без НДС");
 
-                        bool hasWithoutNds = infoText.Contains("Без НДС") ||
-                                             infoText.Contains("без НДС") ||
-                                             infoText == "Без НДС.";
+                        string actualNds = "";
+                        if (hasNds && !hasWithoutNds) actualNds = "С НДС";
+                        else if (hasWithoutNds) actualNds = "Без НДС";
+                        else actualNds = "НЕ ОПРЕДЕЛЕН";
 
-                        if (hasNds && !hasWithoutNds)
-                            companiesWithNds++;
-                        else if (hasWithoutNds)
-                            companiesWithoutNds++;
-                        else
-                            companiesWithoutNdsStatus++;
+                        // Проверяем соответствие фильтру
+                        bool ndsValid = true;
+                        if (filterNdsSelected && !filterWithoutNdsSelected)
+                        {
+                            ndsValid = (actualNds == "С НДС");
+                            if (!ndsValid) companyErrors.Add($"НДС: ожидается 'С НДС', фактически '{actualNds}'");
+                        }
+                        else if (!filterNdsSelected && filterWithoutNdsSelected)
+                        {
+                            ndsValid = (actualNds == "Без НДС");
+                            if (!ndsValid) companyErrors.Add($"НДС: ожидается 'Без НДС', фактически '{actualNds}'");
+                        }
+                        else if (filterNdsSelected && filterWithoutNdsSelected)
+                        {
+                            ndsValid = (actualNds == "С НДС" || actualNds == "Без НДС");
+                            if (!ndsValid) companyErrors.Add($"НДС: ожидается 'С НДС' или 'Без НДС', фактически '{actualNds}'");
+                        }
+
+                        if (ndsValid) Console.WriteLine($"   ✅ НДС: '{actualNds}'");
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        companiesWithoutNdsStatus++;
+                        companyErrors.Add($"НДС: ошибка - {ex.Message}");
                     }
-                }
 
-                Console.WriteLine($"📊 Статистика НДС: С НДС={companiesWithNds}, Без НДС={companiesWithoutNds}, Не определено={companiesWithoutNdsStatus}");
-
-                // Проверяем соответствие выбранным фильтрам НДС
-                if (filterNdsSelected && !filterWithoutNdsSelected)
-                {
-                    if (companiesWithoutNds > 0)
-                        Assert.True(false, $"❌ Найдено {companiesWithoutNds} компаний 'Без НДС', но фильтр 'Без НДС' не выбран");
-                    if (companiesWithoutNdsStatus > 0)
-                        Assert.True(false, $"❌ У {companiesWithoutNdsStatus} компаний не определён статус НДС");
-                    Console.WriteLine("✅ 2. Проверка НДС: только 'С НДС'");
-                }
-                else if (!filterNdsSelected && filterWithoutNdsSelected)
-                {
-                    if (companiesWithNds > 0)
-                        Assert.True(false, $"❌ Найдено {companiesWithNds} компаний 'С НДС', но фильтр 'С НДС' не выбран");
-                    if (companiesWithoutNdsStatus > 0)
-                        Assert.True(false, $"❌ У {companiesWithoutNdsStatus} компаний не определён статус НДС");
-                    Console.WriteLine("✅ 2. Проверка НДС: только 'Без НДС'");
-                }
-                else if (filterNdsSelected && filterWithoutNdsSelected)
-                {
-                    if (companiesWithoutNdsStatus > 0)
-                        Assert.True(false, $"❌ У {companiesWithoutNdsStatus} компаний не определён статус НДС");
-                    Console.WriteLine("✅ 2. Проверка НДС: оба фильтра");
-                }
-                else
-                {
-                    Console.WriteLine("✅ 2. Проверка НДС: фильтры не выбраны, пропущена");
-                }
-
-                // ========== ПРОВЕРКА РЕГИОНОВ (6-й СТОЛБЕЦ) ==========
-                int companiesWithWrongRegions = 0;
-                int companiesWithNoRegions = 0;
-                int companiesWithValidRegions = 0;
-
-                Console.WriteLine("\n--- Проверка регионов ---");
-
-                foreach (var row in partnerRows)
-                {
+                    // 3. ПРОВЕРКА РЕГИОНОВ (6-й столбец)
                     try
                     {
                         string regionsText = "";
-
-                        // Регионы находятся в 6-м столбце (td[6]) внутри tooltip
                         try
                         {
                             var tooltipDiv = row.FindElement(By.XPath(".//td[6]//div[contains(@class,'tooltip')]//div[contains(@class,'partners__info')]"));
                             regionsText = tooltipDiv.Text.Trim();
                         }
-                        catch { }
-
-                        // Если не нашли через tooltip, пробуем просто текст 6-го столбца
-                        if (string.IsNullOrEmpty(regionsText))
+                        catch
                         {
-                            try
-                            {
-                                var regionCell = row.FindElement(By.XPath(".//td[6]"));
-                                regionsText = regionCell.Text.Trim();
-                            }
-                            catch { }
+                            var regionCell = row.FindElement(By.XPath(".//td[6]"));
+                            regionsText = regionCell.Text.Trim();
                         }
 
                         if (string.IsNullOrEmpty(regionsText) || regionsText == "-" || regionsText == "—")
                         {
-                            companiesWithNoRegions++;
-                            continue;
-                        }
-
-                        // Проверяем наличие хотя бы одного выбранного региона
-                        bool hasRegion = false;
-                        foreach (var region in selectedRegionsList)
-                        {
-                            if (regionsText.Contains(region))
-                            {
-                                hasRegion = true;
-                                break;
-                            }
-                        }
-
-                        if (hasRegion)
-                        {
-                            companiesWithValidRegions++;
+                            if (selectedRegionsList.Count > 0)
+                                companyErrors.Add($"Регионы: не указаны (ожидается один из: {string.Join(", ", selectedRegionsList)})");
+                            else
+                                Console.WriteLine($"   ⚠️ Регионы: не указаны (пропускаем)");
                         }
                         else
                         {
-                            companiesWithWrongRegions++;
-                            Console.WriteLine($"   ❌ Нет выбранных регионов. Указано: '{regionsText}'");
+                            bool hasRegion = false;
+                            string foundRegion = "";
+                            foreach (var region in selectedRegionsList)
+                            {
+                                if (regionsText.Contains(region))
+                                {
+                                    hasRegion = true;
+                                    foundRegion = region;
+                                    break;
+                                }
+                            }
+
+                            if (hasRegion)
+                            {
+                                Console.WriteLine($"   ✅ Регионы: '{regionsText}' (найден '{foundRegion}')");
+                            }
+                            else
+                            {
+                                companyErrors.Add($"Регионы: '{regionsText}' не содержит ни одного из выбранных регионов [{string.Join(", ", selectedRegionsList)}]");
+                            }
                         }
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        companiesWithWrongRegions++;
+                        companyErrors.Add($"Регионы: ошибка - {ex.Message}");
                     }
-                }
 
-                Console.WriteLine($"\n📊 Статистика регионов:");
-                Console.WriteLine($"   - С выбранными регионами: {companiesWithValidRegions}");
-                Console.WriteLine($"   - Без регионов (пропущено): {companiesWithNoRegions}");
-                Console.WriteLine($"   - С неверными регионами: {companiesWithWrongRegions}");
-
-                if (selectedRegionsList.Count > 0)
-                {
-                    if (companiesWithWrongRegions > 0)
-                        Assert.True(false, $"❌ У {companiesWithWrongRegions} компаний указаны регионы, но нет ни одного из выбранных");
-
-                    if (companiesWithValidRegions == 0 && companiesWithNoRegions > 0)
-                        Console.WriteLine($"⚠️ ВНИМАНИЕ: У всех компаний отсутствуют регионы");
-
-                    Console.WriteLine($"✅ 3. Проверка регионов: {companiesWithValidRegions} компаний имеют выбранный регион");
-                }
-                else
-                {
-                    Console.WriteLine("✅ 3. Проверка регионов: фильтры не выбраны, пропущена");
-                }
-
-                // ========== ПРОВЕРКА СФЕРЫ ДЕЯТЕЛЬНОСТИ (5-й СТОЛБЕЦ) ==========
-                int companiesWithWrongActivities = 0;
-                int companiesWithNoActivities = 0;
-                int companiesWithValidActivities = 0;
-
-                Console.WriteLine("\n--- Проверка сфер деятельности ---");
-
-                foreach (var row in partnerRows)
-                {
+                    // 4. ПРОВЕРКА СФЕР ДЕЯТЕЛЬНОСТИ (5-й столбец)
                     try
                     {
                         string activitiesText = "";
-
-                        // Сферы деятельности в 5-м столбце (td[5])
                         try
                         {
                             var activityCell = row.FindElement(By.XPath(".//td[5]"));
@@ -507,55 +457,79 @@ namespace RingAutoTests.Tests.Партнеры
 
                         if (string.IsNullOrEmpty(activitiesText) || activitiesText == "-" || activitiesText == "—")
                         {
-                            companiesWithNoActivities++;
-                            continue;
-                        }
-
-                        // Проверяем наличие хотя бы одной выбранной сферы
-                        bool hasActivity = false;
-                        foreach (var activity in selectedActivitiesList)
-                        {
-                            if (activitiesText.Contains(activity))
-                            {
-                                hasActivity = true;
-                                break;
-                            }
-                        }
-
-                        if (hasActivity)
-                        {
-                            companiesWithValidActivities++;
+                            if (selectedActivitiesList.Count > 0)
+                                companyErrors.Add($"Сферы: не указаны (ожидается одна из: {string.Join(", ", selectedActivitiesList)})");
+                            else
+                                Console.WriteLine($"   ⚠️ Сферы: не указаны (пропускаем)");
                         }
                         else
                         {
-                            companiesWithWrongActivities++;
-                            Console.WriteLine($"   ❌ Нет выбранных сфер. Указано: '{activitiesText}'");
+                            bool hasActivity = false;
+                            string foundActivity = "";
+                            foreach (var activity in selectedActivitiesList)
+                            {
+                                if (activitiesText.Contains(activity))
+                                {
+                                    hasActivity = true;
+                                    foundActivity = activity;
+                                    break;
+                                }
+                            }
+
+                            if (hasActivity)
+                            {
+                                Console.WriteLine($"   ✅ Сферы: '{activitiesText}' (найдена '{foundActivity}')");
+                            }
+                            else
+                            {
+                                companyErrors.Add($"Сферы: '{activitiesText}' не содержит ни одной из выбранных сфер [{string.Join(", ", selectedActivitiesList)}]");
+                            }
                         }
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        companiesWithWrongActivities++;
+                        companyErrors.Add($"Сферы: ошибка - {ex.Message}");
                     }
+
+                    // ВЫВОД ОШИБОК ДЛЯ КОМПАНИИ
+                    if (companyErrors.Count > 0)
+                    {
+                        totalErrors++;
+                        Console.WriteLine($"   ❌ ОШИБКИ ({companyErrors.Count}):");
+                        foreach (var err in companyErrors)
+                        {
+                            Console.WriteLine($"      - {err}");
+                            errorMessages.Add($"Компания {companyIndex}: {err}");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"   ✅ Все проверки пройдены");
+                    }
+                    Console.WriteLine();
                 }
 
-                Console.WriteLine($"\n📊 Статистика сфер деятельности:");
-                Console.WriteLine($"   - С выбранными сферами: {companiesWithValidActivities}");
-                Console.WriteLine($"   - Без сфер (пропущено): {companiesWithNoActivities}");
-                Console.WriteLine($"   - С неверными сферами: {companiesWithWrongActivities}");
+                // ========== ИТОГОВАЯ ПРОВЕРКА ==========
+                Console.WriteLine("=== ИТОГИ ПОСТРОЧНОЙ ПРОВЕРКИ ===");
+                Console.WriteLine($"✅ Всего компаний: {companyIndex}");
+                Console.WriteLine($"✅ Компаний без ошибок: {companyIndex - totalErrors}");
 
-                if (selectedActivitiesList.Count > 0)
+                if (totalErrors > 0)
                 {
-                    if (companiesWithWrongActivities > 0)
-                        Assert.True(false, $"❌ У {companiesWithWrongActivities} компаний нет выбранных сфер деятельности");
-
-                    Console.WriteLine($"✅ 4. Проверка сфер: {companiesWithValidActivities} компаний имеют выбранную сферу");
+                    Console.WriteLine($"❌ Компаний с ошибками: {totalErrors}");
+                    Console.WriteLine("\n=== СПИСОК ОШИБОК ===");
+                    foreach (var err in errorMessages)
+                    {
+                        Console.WriteLine($"   {err}");
+                    }
+                    Assert.True(false, $"❌ Найдено {totalErrors} компаний с ошибками. Подробности в логе.");
                 }
                 else
                 {
-                    Console.WriteLine("✅ 4. Проверка сфер: фильтры не выбраны, пропущена");
+                    Console.WriteLine($"✅ Все {companyIndex} компаний прошли все проверки!");
                 }
 
-                // ========== ПРОВЕРКА: НЕТ ПРОИЗВОДИТЕЛЕЙ ==========
+                // ========== ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА: НЕТ ПРОИЗВОДИТЕЛЕЙ ==========
                 var wrongRoles = _browser.Driver.FindElements(By.XPath("//*[contains(text(),'Производители оборудования')]"));
                 Assert.True(wrongRoles.Count == 0, "❌ Найдены производители оборудования");
                 Console.WriteLine("✅ 5. В результатах нет производителей оборудования");
