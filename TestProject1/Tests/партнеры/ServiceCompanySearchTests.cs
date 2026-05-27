@@ -346,7 +346,7 @@ namespace RingAutoTests.Tests.Партнеры
                         }
                         else
                         {
-                            Console.WriteLine($"   ✅ Роль: '{roleText}'");
+                            Console.WriteLine($"   ✅ Роль: Сервисная компания");
                         }
                     }
                     catch (Exception ex)
@@ -386,14 +386,14 @@ namespace RingAutoTests.Tests.Партнеры
                             if (!ndsValid) companyErrors.Add($"НДС: ожидается 'С НДС' или 'Без НДС', фактически '{actualNds}'");
                         }
 
-                        if (ndsValid) Console.WriteLine($"   ✅ НДС: '{actualNds}'");
+                        if (ndsValid) Console.WriteLine($"   ✅ НДС: {actualNds}");
                     }
                     catch (Exception ex)
                     {
                         companyErrors.Add($"НДС: ошибка - {ex.Message}");
                     }
 
-                    // 3. ПРОВЕРКА РЕГИОНОВ (6-й столбец)
+                    // 3. ПРОВЕРКА РЕГИОНОВ (6-й столбец) - вывод ВСЕХ найденных из фильтра
                     try
                     {
                         string regionsText = "";
@@ -417,21 +417,20 @@ namespace RingAutoTests.Tests.Партнеры
                         }
                         else
                         {
-                            bool hasRegion = false;
-                            string foundRegion = "";
+                            // Находим ВСЕ регионы из списка фильтров, которые присутствуют в тексте
+                            List<string> foundRegions = new List<string>();
                             foreach (var region in selectedRegionsList)
                             {
                                 if (regionsText.Contains(region))
                                 {
-                                    hasRegion = true;
-                                    foundRegion = region;
-                                    break;
+                                    foundRegions.Add(region);
                                 }
                             }
 
-                            if (hasRegion)
+                            if (foundRegions.Count > 0)
                             {
-                                Console.WriteLine($"   ✅ Регионы: '{regionsText}' (найден '{foundRegion}')");
+                                // Выводим ВСЕ найденные регионы через запятую
+                                Console.WriteLine($"   ✅ Регионы: {string.Join(", ", foundRegions)}");
                             }
                             else
                             {
@@ -444,7 +443,7 @@ namespace RingAutoTests.Tests.Партнеры
                         companyErrors.Add($"Регионы: ошибка - {ex.Message}");
                     }
 
-                    // 4. ПРОВЕРКА СФЕР ДЕЯТЕЛЬНОСТИ (5-й столбец)
+                    // 4. ПРОВЕРКА СФЕР ДЕЯТЕЛЬНОСТИ (5-й столбец) - вывод ВСЕХ найденных
                     try
                     {
                         string activitiesText = "";
@@ -464,21 +463,20 @@ namespace RingAutoTests.Tests.Партнеры
                         }
                         else
                         {
-                            bool hasActivity = false;
-                            string foundActivity = "";
+                            // Находим ВСЕ сферы из списка фильтров, которые присутствуют в тексте
+                            List<string> foundActivities = new List<string>();
                             foreach (var activity in selectedActivitiesList)
                             {
                                 if (activitiesText.Contains(activity))
                                 {
-                                    hasActivity = true;
-                                    foundActivity = activity;
-                                    break;
+                                    foundActivities.Add(activity);
                                 }
                             }
 
-                            if (hasActivity)
+                            if (foundActivities.Count > 0)
                             {
-                                Console.WriteLine($"   ✅ Сферы: '{activitiesText}' (найдена '{foundActivity}')");
+                                // Выводим ВСЕ найденные сферы через запятую
+                                Console.WriteLine($"   ✅ Сферы: {string.Join(", ", foundActivities)}");
                             }
                             else
                             {
