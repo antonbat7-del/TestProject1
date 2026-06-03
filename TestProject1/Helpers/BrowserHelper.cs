@@ -12,6 +12,7 @@ namespace RingAutoTests.Helpers
         public IWebDriver Driver;
         public WebDriverWait Wait;
 
+        // Существующий конструктор (без изменений)
         public BrowserHelper()
         {
             string downloadPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
@@ -21,6 +22,36 @@ namespace RingAutoTests.Helpers
             // Гостевой режим — без плашек Google
             options.AddArgument("--guest");
             options.AddArgument("--disable-notifications");
+
+            // НАСТРОЙКИ АВТОЗАГРУЗКИ ФАЙЛОВ
+            options.AddUserProfilePreference("download.default_directory", downloadPath);
+            options.AddUserProfilePreference("download.prompt_for_download", false);
+            options.AddUserProfilePreference("download.directory_upgrade", true);
+            options.AddUserProfilePreference("safebrowsing.enabled", true);
+            options.AddUserProfilePreference("profile.default_content_setting_values.automatic_downloads", 1);
+            options.AddUserProfilePreference("safebrowsing.disable_download_protection", true);
+
+            Driver = new ChromeDriver(options);
+            Driver.Manage().Window.Maximize();
+            Wait = new WebDriverWait(Driver, TimeSpan.FromSeconds(15));
+        }
+
+        // ✅ НОВЫЙ КОНСТРУКТОР — для инкогнито (не ломает старые тесты)
+        public BrowserHelper(bool useIncognito)
+        {
+            string downloadPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+
+            var options = new ChromeOptions();
+
+            // Гостевой режим — без плашек Google
+            options.AddArgument("--guest");
+            options.AddArgument("--disable-notifications");
+
+            // ⭐ ТОЛЬКО ДОБАВЛЯЕМ ИНКОГНИТО (если true)
+            if (useIncognito)
+            {
+                options.AddArgument("--incognito");
+            }
 
             // НАСТРОЙКИ АВТОЗАГРУЗКИ ФАЙЛОВ
             options.AddUserProfilePreference("download.default_directory", downloadPath);
